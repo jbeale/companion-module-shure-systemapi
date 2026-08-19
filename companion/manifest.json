@@ -1,0 +1,26 @@
+{
+	"id": "shure-adpsm",
+	"name": "shure-adpsm",
+	"shortname": "shure-adpsm",
+	"description": "Control Shure Axient Digital PSM transmitters (ADTQ/ADTD) via the Shure SystemAPI Server",
+	"version": "0.0.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/jbeale/companion-module-shure-adpsm.git",
+	"bugs": "https://github.com/jbeale/companion-module-shure-adpsm/issues",
+	"maintainers": [
+		{
+			"name": "Justin Beale",
+			"email": "justinbeale92@gmail.com"
+		}
+	],
+	"legacyIds": [],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../src/index.js"
+	},
+	"manufacturer": "Shure",
+	"products": ["Axient Digital PSM (ADTQ, ADTD)"],
+	"keywords": ["IEM", "In-Ear Monitoring", "Wireless"]
+}
