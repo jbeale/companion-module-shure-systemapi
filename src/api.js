@@ -13,7 +13,7 @@ import { InstanceStatus } from '@companion-module/base'
  */
 export default class SystemApiClient {
 	/**
-	 * @param {import('./index.js').default} instance - the module instance
+	 * @param {import('./main.js').default} instance - the module instance
 	 */
 	constructor(instance) {
 		this.instance = instance
@@ -145,7 +145,7 @@ export default class SystemApiClient {
 							reject(new Error(`HTTP ${res.statusCode} on ${method} ${path}: ${data}`))
 						}
 					})
-				}
+				},
 			)
 
 			req.on('error', (err) => reject(err))
@@ -164,14 +164,14 @@ export default class SystemApiClient {
 	 */
 	async refreshDevice() {
 		const devices = await this.request('GET', '/v1/devices')
-		const list = Array.isArray(devices) ? devices : devices?.items ?? []
+		const list = Array.isArray(devices) ? devices : (devices?.items ?? [])
 
 		const adpsm = list.filter((d) => ['ADTQ', 'ADTD'].includes(d.softwareIdentity?.model))
 
 		for (const d of adpsm) {
 			this.instance.log(
 				'debug',
-				`Found ${d.softwareIdentity.model} (${d.deviceState}) at ${d.communicationProtocol?.address} — deviceId ${d.hardwareIdentity?.deviceId}`
+				`Found ${d.softwareIdentity.model} (${d.deviceState}) at ${d.communicationProtocol?.address} — deviceId ${d.hardwareIdentity?.deviceId}`,
 			)
 		}
 
@@ -246,7 +246,7 @@ export default class SystemApiClient {
 		}
 
 		if (audioChannels) {
-			const list = Array.isArray(audioChannels) ? audioChannels : audioChannels?.items ?? []
+			const list = Array.isArray(audioChannels) ? audioChannels : (audioChannels?.items ?? [])
 			await this.loadChannels(list)
 		}
 
@@ -298,26 +298,26 @@ export default class SystemApiClient {
 			reqs.push(
 				channel.capabilities.includes('name')
 					? this.request('GET', `/v1/devices/${id}/audio-channels/${encodeURIComponent(ch.id)}/name`)
-					: null
+					: null,
 			)
 			reqs.push(
 				channel.capabilities.includes('mute')
 					? this.request('GET', `/v1/devices/${id}/audio-channels/${encodeURIComponent(ch.id)}/mute`)
-					: null
+					: null,
 			)
 			reqs.push(
 				channel.capabilities.includes('gain')
 					? this.request('GET', `/v1/devices/${id}/audio-channels/${encodeURIComponent(ch.id)}/gain`)
-					: null
+					: null,
 			)
 			reqs.push(
 				channel.capabilities.includes('gain') && channel.gainRange === null
 					? this.request('GET', `/v1/devices/${id}/audio-channels/${encodeURIComponent(ch.id)}/gain/description`)
-					: null
+					: null,
 			)
 
 			const [name, mute, gain, gainDesc] = (await Promise.allSettled(reqs)).map((r) =>
-				r.status === 'fulfilled' ? r.value : null
+				r.status === 'fulfilled' ? r.value : null,
 			)
 
 			if (name) {
@@ -433,7 +433,7 @@ export default class SystemApiClient {
 			subs.push(
 				`/v1/devices/${id}/name/subscription/${t}`,
 				`/v1/devices/${id}/identify/subscription/${t}`,
-				`/v1/devices/${id}/audio-mute/subscription/${t}`
+				`/v1/devices/${id}/audio-mute/subscription/${t}`,
 			)
 
 			for (const ch of this.channels.values()) {

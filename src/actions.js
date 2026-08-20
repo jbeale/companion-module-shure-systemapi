@@ -1,7 +1,7 @@
 /**
  * Define the actions for the module.
  *
- * @this {import('./index.js').default}
+ * @this {import('./main.js').default}
  */
 export function updateActions() {
 	const api = this.api
@@ -11,7 +11,7 @@ export function updateActions() {
 			await api.request(
 				'PATCH',
 				`/v1/devices/${api.device.id}/audio-channels/${encodeURIComponent(channelId)}/${capability}`,
-				body
+				body,
 			)
 		} catch (err) {
 			this.log('error', `Failed to set channel ${capability}: ${err.message}`)
@@ -57,9 +57,9 @@ export function updateActions() {
 					tooltip: 'The allowed range is reported by the device and clamped automatically.',
 				},
 			],
-			callback: async ({ options }, context) => {
+			callback: async ({ options }) => {
 				const ch = api.channels.get(options.channel)
-				const gain = parseFloat(await context.parseVariablesInString(options.gain))
+				const gain = parseFloat(options.gain)
 				if (!ch || isNaN(gain)) {
 					return
 				}
@@ -99,9 +99,9 @@ export function updateActions() {
 					useVariables: true,
 				},
 			],
-			callback: async ({ options }, context) => {
+			callback: async ({ options }) => {
 				const ch = api.channels.get(options.channel)
-				const name = (await context.parseVariablesInString(options.name)).trim()
+				const name = String(options.name).trim()
 				if (!ch || name.length === 0) {
 					return
 				}
@@ -167,8 +167,8 @@ export function updateActions() {
 					useVariables: true,
 				},
 			],
-			callback: async ({ options }, context) => {
-				const name = (await context.parseVariablesInString(options.name)).trim()
+			callback: async ({ options }) => {
+				const name = String(options.name).trim()
 				if (name.length === 0) {
 					return
 				}

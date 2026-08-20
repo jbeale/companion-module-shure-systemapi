@@ -3,7 +3,7 @@ import { combineRgb } from '@companion-module/base'
 /**
  * Define the feedbacks for the module.
  *
- * @this {import('./index.js').default}
+ * @this {import('./main.js').default}
  */
 export function updateFeedbacks() {
 	const api = this.api

@@ -1,4 +1,7 @@
 node_modules/
-pkg/
-pkg.tgz
-/DEBUG-*
+package-lock.json
+/pkg
+/*.tgz
+DEBUG-*
+/.yarn
+.DS_Store

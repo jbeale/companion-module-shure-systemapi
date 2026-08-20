@@ -1,9 +1,10 @@
-import { InstanceBase, InstanceStatus, Regex, runEntrypoint } from '@companion-module/base'
+import { InstanceBase, InstanceStatus, Regex } from '@companion-module/base'
 import { updateActions } from './actions.js'
 import { updateFeedbacks } from './feedbacks.js'
 import { updateVariables } from './variables.js'
 import SystemApiClient from './api.js'
-import { UpgradeScripts } from './upgrades.js'
+
+export { UpgradeScripts } from './upgrades.js'
 
 /**
  * Companion instance class for Shure Axient Digital PSM transmitters
@@ -15,7 +16,7 @@ import { UpgradeScripts } from './upgrades.js'
  *
  * @extends InstanceBase
  */
-class ShureADPSMInstance extends InstanceBase {
+export default class ShureADPSMInstance extends InstanceBase {
 	constructor(internal) {
 		super(internal)
 
@@ -186,8 +187,6 @@ class ShureADPSMInstance extends InstanceBase {
 		this.updateActions()
 		this.updateFeedbacks()
 		this.updateVariables()
-		this.checkFeedbacks()
+		this.checkAllFeedbacks()
 	}
 }
-
-runEntrypoint(ShureADPSMInstance, UpgradeScripts)
