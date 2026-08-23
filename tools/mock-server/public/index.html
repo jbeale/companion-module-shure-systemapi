@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Shure ADPSM Simulator</title>
+		<style>
+			:root {
+				--bg: #f6f7f9;
+				--panel: #ffffff;
+				--line: #d9dde3;
+				--text: #1c2024;
+				--muted: #6b7480;
+				--accent: #1d6fe0;
+				--good: #17864a;
+				--warn: #b26a00;
+				--bad: #c02626;
+			}
+			@media (prefers-color-scheme: dark) {
+				:root {
+					--bg: #14171a;
+					--panel: #1c2024;
+					--line: #2e343b;
+					--text: #e8eaed;
+					--muted: #969ea9;
+					--accent: #5b9dff;
+					--good: #3fbb75;
+					--warn: #e0a33a;
+					--bad: #ef5f5f;
+				}
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				padding: 20px;
+				background: var(--bg);
+				color: var(--text);
+				font:
+					14px/1.5 system-ui,
+					-apple-system,
+					'Segoe UI',
+					sans-serif;
+			}
+			h1 {
+				font-size: 18px;
+				margin: 0 0 4px;
+			}
+			.sub {
+				color: var(--muted);
+				font-size: 13px;
+				margin-bottom: 16px;
+			}
+			.bar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 10px;
+				align-items: center;
+				background: var(--panel);
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				padding: 12px 14px;
+				margin-bottom: 16px;
+			}
+			.bar code {
+				background: var(--bg);
+				border: 1px solid var(--line);
+				border-radius: 4px;
+				padding: 2px 6px;
+				font-size: 12px;
+			}
+			.dot {
+				display: inline-block;
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				background: var(--muted);
+			}
+			.dot.live {
+				background: var(--good);
+			}
+			.card {
+				background: var(--panel);
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				padding: 14px;
+				margin-bottom: 12px;
+			}
+			.card.pack {
+				margin: 10px 0 0 24px;
+				border-left: 3px solid var(--accent);
+			}
+			.head {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+			}
+			.title {
+				font-weight: 600;
+			}
+			.tag {
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				color: var(--muted);
+				border: 1px solid var(--line);
+				border-radius: 999px;
+				padding: 1px 8px;
+			}
+			.spacer {
+				flex: 1;
+			}
+			.grid {
+				display: grid;
+				grid-template-columns: 130px 1fr 70px;
+				gap: 8px 12px;
+				align-items: center;
+				margin-top: 12px;
+			}
+			label {
+				color: var(--muted);
+				font-size: 13px;
+			}
+			input[type='range'] {
+				width: 100%;
+			}
+			input[type='text'],
+			input[type='number'],
+			select {
+				background: var(--bg);
+				color: var(--text);
+				border: 1px solid var(--line);
+				border-radius: 5px;
+				padding: 5px 7px;
+				font: inherit;
+			}
+			button {
+				background: var(--accent);
+				color: #fff;
+				border: 0;
+				border-radius: 5px;
+				padding: 6px 11px;
+				font: inherit;
+				cursor: pointer;
+			}
+			button.ghost {
+				background: transparent;
+				color: var(--muted);
+				border: 1px solid var(--line);
+			}
+			button.danger {
+				background: transparent;
+				color: var(--bad);
+				border: 1px solid var(--line);
+			}
+			.val {
+				text-align: right;
+				font-variant-numeric: tabular-nums;
+				color: var(--muted);
+			}
+			.chan {
+				border-top: 1px solid var(--line);
+				padding-top: 10px;
+				margin-top: 10px;
+			}
+			.chanrow {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+				flex-wrap: wrap;
+				margin-bottom: 8px;
+			}
+			.chanrow .nm {
+				width: 110px;
+			}
+			.batt {
+				font-variant-numeric: tabular-nums;
+				font-weight: 600;
+			}
+			.batt.ok {
+				color: var(--good);
+			}
+			.batt.low {
+				color: var(--warn);
+			}
+			.batt.crit {
+				color: var(--bad);
+			}
+			.note {
+				color: var(--muted);
+				font-size: 12px;
+				margin-top: 14px;
+				padding: 10px 12px;
+				border: 1px dashed var(--line);
+				border-radius: 6px;
+			}
+			.off {
+				opacity: 0.55;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Shure ADPSM Simulator</h1>
+		<div class="sub">
+			Mock SystemAPI Server — drive fake ADTQ/ADTD transmitters and ADXR packs for Companion testing.
+		</div>
+
+		<div class="bar">
+			<span><span class="dot" id="livedot"></span> <span id="livetext">no subscribers</span></span>
+			<span class="spacer"></span>
+			<span>Host <code id="apihost">…</code></span>
+			<span>Port <code id="apiport">…</code></span>
+			<span>API key <code id="apikey">…</code></span>
+			<button class="ghost" id="copykey">Copy key</button>
+		</div>
+
+		<div class="bar">
+			<strong>Add</strong>
+			<select id="newmodel">
+				<option value="ADTQ">ADTQ — quad transmitter</option>
+				<option value="ADTD">ADTD — dual transmitter</option>
+			</select>
+			<input type="text" id="newname" placeholder="Name (optional)" />
+			<button id="adddev">Add transmitter</button>
+		</div>
+
+		<div id="devices"></div>
+
+		<div class="note">
+			<strong>On RF / signal quality:</strong> SystemAPI v1.8 exposes no RF endpoints — no frequency, RF level, antenna
+			or ShowLink status for any device. The closest real signal is per-channel <em>audio activity</em>
+			(LOW / GOOD / CLIPPING), which the server pushes every 5 seconds; that is simulated here. Battery level, battery
+			health and cycle count are real API features and are fully simulated.
+		</div>
+
+		<script>
+			let lastKeys = ''
+
+			const post = (body) =>
+				fetch('/sim/action', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body),
+				})
+
+			const esc = (s) =>
+				String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+			function battClass(p) {
+				return p <= 15 ? 'crit' : p <= 35 ? 'low' : 'ok'
+			}
+
+			function deviceHtml(d, packs, st) {
+				const off = d.deviceState !== 'ONLINE' ? ' off' : ''
+				const chans = d.channels
+					.map(
+						(c) => `
+					<div class="chanrow" data-ch="${c.id}">
+						<input class="nm" type="text" value="${esc(c.name)}" data-act="chname" />
+						<label><input type="checkbox" data-act="chmute" ${c.muted ? 'checked' : ''} /> Mute</label>
+						<label>Gain</label>
+						<input type="range" min="${c.gainRange.min}" max="${c.gainRange.max}" step="${c.gainRange.step}"
+							value="${c.gain}" data-act="chgain" style="width:140px" />
+						<span class="val" data-fld="gainval">${c.gain} dB</span>
+						<label>Activity</label>
+						<select data-act="chact">
+							${st.activityLevels.map((a) => `<option ${a === c.activity ? 'selected' : ''}>${a}</option>`).join('')}
+						</select>
+					</div>`,
+					)
+					.join('')
+
+				const packHtml = packs
+					.map((p) => {
+						const b = p.battery
+						return `
+					<div class="card pack${p.deviceState !== 'ONLINE' ? ' off' : ''}" data-dev="${p.deviceId}">
+						<div class="head">
+							<span class="title">${esc(p.name)}</span>
+							<span class="tag">${p.model}</span>
+							<span class="batt ${battClass(b.percentage)}" data-fld="battlabel">${Math.round(b.percentage)}%</span>
+							<span class="tag" data-fld="battstate">${b.state}</span>
+							${p.identifying ? '<span class="tag" style="color:var(--warn)">identifying</span>' : ''}
+							<span class="spacer"></span>
+							<button class="ghost" data-act="toggleonline">${p.deviceState === 'ONLINE' ? 'Take offline' : 'Bring online'}</button>
+							<button class="danger" data-act="remove">Remove</button>
+						</div>
+						<div class="grid">
+							<label>Battery level</label>
+							<input type="range" min="0" max="100" value="${b.percentage}" data-act="battpct" />
+							<span class="val" data-fld="battpctval">${Math.round(b.percentage)}%</span>
+
+							<label>State</label>
+							<select data-act="battstate">
+								${st.batteryStates.map((s) => `<option ${s === b.state ? 'selected' : ''}>${s}</option>`).join('')}
+							</select>
+							<label style="justify-self:end"><input type="checkbox" data-act="battdrain" ${b.drain ? 'checked' : ''} /> Run</label>
+
+							<label>Time to target</label>
+							<input type="range" min="0" max="900" value="${b.minutesToTarget}" data-act="batteta" />
+							<span class="val" data-fld="battetaval">${Math.round(b.minutesToTarget)} min</span>
+
+							<label>Battery health</label>
+							<input type="range" min="0" max="100" value="${b.healthPercentage}" data-act="batthealth" />
+							<span class="val" data-fld="batthealthval">${Math.round(b.healthPercentage)}%</span>
+
+							<label>Cycle count</label>
+							<input type="number" min="0" value="${b.cycleCount}" data-act="battcycles" />
+							<span></span>
+						</div>
+					</div>`
+					})
+					.join('')
+
+				return `
+				<div class="card${off}" data-dev="${d.deviceId}">
+					<div class="head">
+						<span class="title">${esc(d.name)}</span>
+						<span class="tag">${d.model}</span>
+						<span class="tag">${d.address}</span>
+						<span class="tag">fw ${d.firmwareVersion}</span>
+						<span class="tag" data-fld="devstate">${d.deviceState}</span>
+						${d.identifying ? '<span class="tag" style="color:var(--warn)">identifying</span>' : ''}
+						<span class="spacer"></span>
+						${d.hasAudioMute ? `<label><input type="checkbox" data-act="devmute" ${d.audioMute ? 'checked' : ''} /> Device mute</label>` : ''}
+						<button class="ghost" data-act="toggleonline">${d.deviceState === 'ONLINE' ? 'Take offline' : 'Bring online'}</button>
+						<button class="ghost" data-act="addpack">Add pack</button>
+						<button class="danger" data-act="remove">Remove</button>
+					</div>
+					<div class="chan">${chans}</div>
+					${packHtml}
+				</div>`
+			}
+
+			function render(st) {
+				document.getElementById('apihost').textContent = '127.0.0.1'
+				document.getElementById('apiport').textContent = new URL(st.apiUrl).port
+				document.getElementById('apikey').textContent = st.apiKey
+				const live = st.transports > 0
+				document.getElementById('livedot').className = 'dot' + (live ? ' live' : '')
+				document.getElementById('livetext').textContent = live
+					? `${st.transports} subscriber${st.transports > 1 ? 's' : ''} connected`
+					: 'no subscribers'
+
+				const parents = st.devices.filter((d) => !d.parentId)
+				const keys = st.devices.map((d) => d.deviceId + d.deviceState + d.identifying + d.channels.length).join('|')
+
+				if (keys !== lastKeys) {
+					lastKeys = keys
+					document.getElementById('devices').innerHTML = parents
+						.map((d) =>
+							deviceHtml(
+								d,
+								st.devices.filter((p) => p.parentId === d.deviceId),
+								st,
+							),
+						)
+						.join('')
+					return
+				}
+
+				// live-update values without clobbering whatever the user is touching
+				const active = document.activeElement
+				for (const d of st.devices) {
+					const card = document.querySelector(`[data-dev="${d.deviceId}"]`)
+					if (!card) continue
+
+					if (d.battery) {
+						const b = d.battery
+						const set = (sel, v) => {
+							const el = card.querySelector(sel)
+							if (el && el !== active) el.value = v
+						}
+						const txt = (fld, v) => {
+							const el = card.querySelector(`[data-fld="${fld}"]`)
+							if (el) el.textContent = v
+						}
+						set('[data-act="battpct"]', b.percentage)
+						set('[data-act="batteta"]', b.minutesToTarget)
+						txt('battpctval', Math.round(b.percentage) + '%')
+						txt('battetaval', Math.round(b.minutesToTarget) + ' min')
+						txt('battstate', b.state)
+						const lab = card.querySelector('[data-fld="battlabel"]')
+						if (lab) {
+							lab.textContent = Math.round(b.percentage) + '%'
+							lab.className = 'batt ' + battClass(b.percentage)
+						}
+						const sel = card.querySelector('[data-act="battstate"]')
+						if (sel && sel !== active) sel.value = b.state
+					}
+
+					for (const c of d.channels) {
+						const row = card.querySelector(`[data-ch="${c.id}"]`)
+						if (!row) continue
+						const g = row.querySelector('[data-act="chgain"]')
+						if (g && g !== active) g.value = c.gain
+						const gv = row.querySelector('[data-fld="gainval"]')
+						if (gv) gv.textContent = c.gain + ' dB'
+						const m = row.querySelector('[data-act="chmute"]')
+						if (m && m !== active) m.checked = c.muted
+					}
+				}
+			}
+
+			document.getElementById('devices').addEventListener('input', onAction)
+			document.getElementById('devices').addEventListener('click', onAction)
+
+			function onAction(ev) {
+				const el = ev.target
+				const act = el.dataset.act
+				if (!act) return
+
+				const card = el.closest('[data-dev]')
+				const deviceId = card.dataset.dev
+				const row = el.closest('[data-ch]')
+				const channelId = row?.dataset.ch
+
+				if (ev.type === 'click') {
+					if (act === 'remove') {
+						post({ action: 'removeDevice', deviceId })
+						lastKeys = ''
+						return
+					}
+					if (act === 'addpack') {
+						post({ action: 'addDevice', model: 'ADXR', parentId: deviceId }).then(() => (lastKeys = ''))
+						return
+					}
+					if (act === 'toggleonline') {
+						const goingOffline = el.textContent.includes('offline')
+						post({
+							action: 'setDevice',
+							deviceId,
+							field: 'deviceState',
+							value: goingOffline ? 'OFFLINE' : 'ONLINE',
+						})
+						lastKeys = ''
+						return
+					}
+				}
+
+				if (ev.type !== 'input' && !(ev.type === 'click' && el.type === 'checkbox')) return
+
+				const map = {
+					battpct: ['setBattery', 'percentage', () => Number(el.value)],
+					batteta: ['setBattery', 'minutesToTarget', () => Number(el.value)],
+					batthealth: ['setBattery', 'healthPercentage', () => Number(el.value)],
+					battcycles: ['setBattery', 'cycleCount', () => Number(el.value)],
+					battstate: ['setBattery', 'state', () => el.value],
+					battdrain: ['setBattery', 'drain', () => el.checked],
+					devmute: ['setDevice', 'audioMute', () => el.checked],
+					chmute: ['setChannel', 'muted', () => el.checked],
+					chgain: ['setChannel', 'gain', () => Number(el.value)],
+					chname: ['setChannel', 'name', () => el.value],
+					chact: ['setChannel', 'activity', () => el.value],
+				}
+				const entry = map[act]
+				if (!entry) return
+				const [action, field, get] = entry
+				post({ action, deviceId, channelId, field, value: get() })
+			}
+
+			document.getElementById('adddev').addEventListener('click', () => {
+				post({
+					action: 'addDevice',
+					model: document.getElementById('newmodel').value,
+					name: document.getElementById('newname').value || undefined,
+				}).then(() => {
+					document.getElementById('newname').value = ''
+					lastKeys = ''
+				})
+			})
+
+			document.getElementById('copykey').addEventListener('click', () => {
+				navigator.clipboard.writeText(document.getElementById('apikey').textContent)
+			})
+
+			async function poll() {
+				try {
+					const st = await (await fetch('/sim/state')).json()
+					render(st)
+				} catch (_e) {
+					/* server restarting */
+				}
+				setTimeout(poll, 500)
+			}
+			poll()
+		</script>
+	</body>
+</html>

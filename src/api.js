@@ -38,6 +38,16 @@ export default class SystemApiClient {
 		}
 		// audioChannelId (base64 string) -> channel state object
 		this.channels = new Map()
+		// deviceId -> battery-capable device (ADXR bodypack etc.), sorted by name for display
+		this.packs = new Map()
+	}
+
+	/**
+	 * Battery-capable devices, ordered by name so pack numbering is stable.
+	 * @returns {Array<Object>} packs
+	 */
+	getPacks() {
+		return [...this.packs.values()].sort((a, b) => a.name.localeCompare(b.name))
 	}
 
 	/**
@@ -160,11 +170,37 @@ export default class SystemApiClient {
 	}
 
 	/**
+	 * Normalise the device list response.
+	 *
+	 * The spec's ListDevicesResponse is Relay-style pagination
+	 * (`{pageInfo, edges:[{cursor, node}]}`), while the Getting Started guide
+	 * shows a bare array. Accept both, plus an `items` wrapper, so a server
+	 * change cannot silently empty the device list.
+	 *
+	 * @param {any} response - parsed GET /v1/devices body
+	 * @returns {Array<Object>} device nodes
+	 */
+	normaliseDeviceList(response) {
+		if (Array.isArray(response)) {
+			return response
+		}
+		if (Array.isArray(response?.edges)) {
+			return response.edges.map((e) => e?.node).filter(Boolean)
+		}
+		if (Array.isArray(response?.items)) {
+			return response.items
+		}
+		return []
+	}
+
+	/**
 	 * Discover devices, pick the configured ADPSM transmitter, and load its state.
 	 */
 	async refreshDevice() {
 		const devices = await this.request('GET', '/v1/devices')
-		const list = Array.isArray(devices) ? devices : (devices?.items ?? [])
+		const list = this.normaliseDeviceList(devices)
+
+		await this.refreshPacks(list)
 
 		const adpsm = list.filter((d) => ['ADTQ', 'ADTD'].includes(d.softwareIdentity?.model))
 
@@ -217,6 +253,162 @@ export default class SystemApiClient {
 		if (changedDevice) {
 			this.instance.log('info', `Controlling ${this.device.model} (${this.device.id})`)
 		}
+	}
+
+	/**
+	 * Track every battery-capable device on the server (ADXR bodypacks and
+	 * anything else reporting a battery) and load its battery state.
+	 *
+	 * The API exposes no parent/child link between a transmitter and its packs,
+	 * so all battery devices on the server are surfaced, ordered by name.
+	 *
+	 * @param {Array<Object>} list - normalised device list
+	 */
+	async refreshPacks(list) {
+		const battery = list.filter(
+			(d) => d.capabilities?.includes('battery-level') || d.capabilities?.includes('battery-health'),
+		)
+
+		const known = new Set()
+		let structureChanged = false
+
+		for (const node of battery) {
+			const id = node.hardwareIdentity?.deviceId
+			if (!id) continue
+			known.add(id)
+
+			let pack = this.packs.get(id)
+			if (!pack) {
+				pack = {
+					id: id,
+					name: '',
+					model: node.softwareIdentity?.model ?? '',
+					state: node.deviceState,
+					percentage: null,
+					batteryState: '',
+					targetState: '',
+					runtimeMinutes: null,
+					health: null,
+					cycles: null,
+					subscribed: false,
+				}
+				this.packs.set(id, pack)
+				structureChanged = true
+			}
+			pack.state = node.deviceState
+
+			if (node.deviceState !== 'ONLINE') continue
+
+			const [name, level, health] = (
+				await Promise.allSettled([
+					this.request('GET', `/v1/devices/${id}/name`),
+					this.request('GET', `/v1/devices/${id}/battery-level`),
+					this.request('GET', `/v1/devices/${id}/battery-health`),
+				])
+			).map((r) => (r.status === 'fulfilled' ? r.value : null))
+
+			if (name?.name !== undefined && name.name !== pack.name) {
+				pack.name = name.name
+				structureChanged = true
+			}
+			if (level) {
+				this.applyBatteryLevel(pack, level)
+			}
+			if (health) {
+				pack.health = health.percentage
+				pack.cycles = health.cycleCount
+			}
+		}
+
+		for (const id of [...this.packs.keys()]) {
+			if (!known.has(id)) {
+				this.packs.delete(id)
+				structureChanged = true
+			}
+		}
+
+		if (structureChanged) {
+			this.instance.rebuildChannelData()
+		}
+		this.publishPackVariables()
+	}
+
+	/**
+	 * Copy a DeviceBatteryLevelResponse onto a pack.
+	 *
+	 * @param {Object} pack - pack state
+	 * @param {Object} body - battery level response
+	 */
+	applyBatteryLevel(pack, body) {
+		pack.percentage = body.percentage
+		pack.batteryState = body.status?.currentState ?? ''
+		pack.targetState = body.status?.targetState ?? ''
+		pack.runtimeMinutes = this.parseIsoMinutes(body.status?.timeToTargetState)
+	}
+
+	/**
+	 * Parse an ISO-8601 duration like `PT853M` into whole minutes.
+	 *
+	 * @param {string|null} value - duration
+	 * @returns {number|null} minutes, or null when unknown
+	 */
+	parseIsoMinutes(value) {
+		if (typeof value !== 'string') {
+			return null
+		}
+		const m = value.match(/^P(?:([\d.]+)D)?T?(?:([\d.]+)H)?(?:([\d.]+)M)?(?:([\d.]+)S)?$/)
+		if (!m) {
+			return null
+		}
+		const [, d, h, min, s] = m
+		const total = (Number(d) || 0) * 1440 + (Number(h) || 0) * 60 + (Number(min) || 0) + (Number(s) || 0) / 60
+		return Math.round(total)
+	}
+
+	/**
+	 * Push all pack variables and refresh battery feedbacks.
+	 */
+	publishPackVariables() {
+		const values = { pack_count: this.packs.size }
+		let lowest = null
+
+		this.getPacks().forEach((pack, i) => {
+			const n = i + 1
+			values[`pack_${n}_name`] = pack.name
+			values[`pack_${n}_model`] = pack.model
+			values[`pack_${n}_battery`] = pack.percentage ?? ''
+			values[`pack_${n}_battery_state`] = pack.batteryState
+			values[`pack_${n}_runtime`] = this.formatRuntime(pack.runtimeMinutes)
+			values[`pack_${n}_runtime_minutes`] = pack.runtimeMinutes ?? ''
+			values[`pack_${n}_health`] = pack.health ?? ''
+			values[`pack_${n}_cycles`] = pack.cycles ?? ''
+			values[`pack_${n}_state`] = pack.state
+
+			if (typeof pack.percentage === 'number' && pack.state === 'ONLINE') {
+				if (lowest === null || pack.percentage < lowest) {
+					lowest = pack.percentage
+				}
+			}
+		})
+
+		values.pack_lowest_battery = lowest ?? ''
+		this.instance.setVariableValues(values)
+		this.instance.checkFeedbacks('pack_battery_low', 'any_pack_battery_low')
+	}
+
+	/**
+	 * Format remaining runtime as `H:MM`, matching how mixers usually show it.
+	 *
+	 * @param {number|null} minutes - remaining minutes
+	 * @returns {string} formatted runtime
+	 */
+	formatRuntime(minutes) {
+		if (typeof minutes !== 'number') {
+			return ''
+		}
+		const h = Math.floor(minutes / 60)
+		const m = minutes % 60
+		return `${h}:${String(m).padStart(2, '0')}`
 	}
 
 	/**
@@ -435,7 +627,17 @@ export default class SystemApiClient {
 				`/v1/devices/${id}/identify/subscription/${t}`,
 				`/v1/devices/${id}/audio-mute/subscription/${t}`,
 			)
+		}
 
+		for (const pack of this.packs.values()) {
+			subs.push(
+				`/v1/devices/${pack.id}/battery-level/subscription/${t}`,
+				`/v1/devices/${pack.id}/battery-health/subscription/${t}`,
+				`/v1/devices/${pack.id}/name/subscription/${t}`,
+			)
+		}
+
+		if (id) {
 			for (const ch of this.channels.values()) {
 				const chId = encodeURIComponent(ch.id)
 				if (ch.capabilities.includes('mute')) {
@@ -465,6 +667,26 @@ export default class SystemApiClient {
 	processEvent(msg) {
 		const { eventName, deviceId, audioChannelId } = msg.envelope
 		const body = msg.body
+
+		// battery-bearing packs are tracked alongside the selected transmitter
+		const pack = deviceId ? this.packs.get(deviceId) : undefined
+		if (pack) {
+			switch (eventName) {
+				case 'DEVICE_BATTERY_LEVEL':
+					this.applyBatteryLevel(pack, body)
+					this.publishPackVariables()
+					return
+				case 'DEVICE_BATTERY_HEALTH':
+					pack.health = body.percentage
+					pack.cycles = body.cycleCount
+					this.publishPackVariables()
+					return
+				case 'DEVICE_NAME':
+					pack.name = body.name
+					this.instance.rebuildChannelData()
+					return
+			}
+		}
 
 		if (deviceId && this.device.id && deviceId !== this.device.id && eventName !== 'DEVICE_STATE_CHANGE') {
 			return

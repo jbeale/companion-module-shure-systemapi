@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"format": "prettier -w .",
-		"package": "companion-module-build"
+		"package": "companion-module-build",
+		"mock": "node tools/mock-server/index.js"
 	},
 	"license": "MIT",
 	"repository": {

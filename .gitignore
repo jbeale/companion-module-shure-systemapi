@@ -5,3 +5,4 @@ package-lock.json
 DEBUG-*
 /.yarn
 .DS_Store
+tools/mock-server/.cert/

@@ -180,6 +180,33 @@ export default class ShureADPSMInstance extends InstanceBase {
 	}
 
 	/**
+	 * Pack dropdown option built from the current battery-device list.
+	 * Packs are addressed by position so button config survives a pack
+	 * being swapped for another unit mid-show.
+	 *
+	 * @returns {Object} dropdown field definition
+	 */
+	PACKS_FIELD() {
+		const packs = this.api.getPacks()
+		const choices = packs.map((pack, i) => ({
+			id: String(i + 1),
+			label: `Pack ${i + 1}${pack.name ? ` (${pack.name})` : ''}`,
+		}))
+
+		if (choices.length === 0) {
+			choices.push({ id: '1', label: 'Pack 1' })
+		}
+
+		return {
+			type: 'dropdown',
+			label: 'Pack',
+			id: 'pack',
+			default: '1',
+			choices: choices,
+		}
+	}
+
+	/**
 	 * Re-publish actions, feedbacks and variables after the channel
 	 * list or channel names change, so dropdown labels stay current.
 	 */
