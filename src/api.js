@@ -52,7 +52,7 @@ export default class SystemApiClient {
 
 	/**
 	 * Start the client: find the device, load state, open the WebSocket.
-	 * @param {Object} config - module config (host, port, apiKey, deviceMode, deviceId)
+	 * @param {Object} config - module config (host, port, apiKey, device)
 	 */
 	async init(config) {
 		this.config = config
@@ -78,17 +78,42 @@ export default class SystemApiClient {
 	}
 
 	/**
+	 * Tear down the current WebSocket safely.
+	 *
+	 * Calling close() on a socket that is still CONNECTING makes `ws` emit an
+	 * error; with the listeners already removed that would surface as an
+	 * unhandled 'error' event and take the module down. Swallow it and use
+	 * terminate() while connecting.
+	 */
+	closeWebSocket() {
+		if (!this.ws) {
+			return
+		}
+
+		const ws = this.ws
+		this.ws = null
+
+		ws.removeAllListeners()
+		ws.on('error', () => {})
+
+		try {
+			if (ws.readyState === WebSocket.CONNECTING) {
+				ws.terminate()
+			} else {
+				ws.close()
+			}
+		} catch (_err) {
+			/* already gone */
+		}
+	}
+
+	/**
 	 * Stop all sockets and timers.
 	 */
 	destroy() {
 		this.destroyed = true
 		this.stopTimers()
-
-		if (this.ws) {
-			this.ws.removeAllListeners()
-			this.ws.close()
-			this.ws = null
-		}
+		this.closeWebSocket()
 	}
 
 	stopTimers() {
@@ -210,18 +235,16 @@ export default class SystemApiClient {
 
 		const adpsm = list.filter((d) => ['ADTQ', 'ADTD'].includes(d.softwareIdentity?.model))
 
-		for (const d of adpsm) {
-			this.instance.log(
-				'debug',
-				`Found ${d.softwareIdentity.model} (${d.deviceState}) at ${d.communicationProtocol?.address} — deviceId ${d.hardwareIdentity?.deviceId}`,
-			)
-		}
+		await this.cacheDiscovered(list, adpsm)
+
+		const selected = String(this.config.device ?? 'auto').trim()
 
 		let target
-		if (this.config.deviceMode === 'id' && this.config.deviceId) {
-			target = list.find((d) => d.hardwareIdentity?.deviceId?.toLowerCase() === this.config.deviceId.toLowerCase())
+		if (selected && selected !== 'auto') {
+			target = list.find((d) => d.hardwareIdentity?.deviceId?.toLowerCase() === selected.toLowerCase())
 			if (!target) {
-				throw new Error(`Device ${this.config.deviceId} not found on SystemAPI Server`)
+				const known = this.instance.discovered.map((d) => `${d.model} "${d.name}" ${d.id}`).join('; ')
+				throw new Error(`Selected device ${selected} is not on the server. Available: ${known || 'none'}`)
 			}
 		} else {
 			target = adpsm[0]
@@ -258,6 +281,41 @@ export default class SystemApiClient {
 
 		if (changedDevice) {
 			this.instance.log('info', `Controlling ${this.device.model} (${this.device.id})`)
+		}
+	}
+
+	/**
+	 * Cache the discovered devices, with their user-facing names, so the config
+	 * screen can offer a real picker instead of asking for a raw UUID.
+	 *
+	 * ADPSM transmitters are listed first; everything else the server knows about
+	 * follows, since the capability-driven action list adapts to whatever is picked.
+	 *
+	 * @param {Array<Object>} list - all device nodes
+	 * @param {Array<Object>} adpsm - the ADTQ/ADTD subset
+	 */
+	async cacheDiscovered(list, adpsm) {
+		const ordered = [...adpsm, ...list.filter((d) => !adpsm.includes(d))]
+
+		const names = await Promise.allSettled(
+			ordered.map((d) =>
+				d.deviceState === 'ONLINE' && d.capabilities?.includes('name')
+					? this.request('GET', `/v1/devices/${d.hardwareIdentity.deviceId}/name`)
+					: Promise.resolve(null),
+			),
+		)
+
+		this.instance.discovered = ordered.map((d, i) => ({
+			id: d.hardwareIdentity?.deviceId ?? '',
+			model: d.softwareIdentity?.model ?? '?',
+			name: (names[i].status === 'fulfilled' ? names[i].value?.name : '') ?? '',
+			address: d.communicationProtocol?.address ?? '',
+			state: d.deviceState ?? '',
+			isAdpsm: adpsm.includes(d),
+		}))
+
+		for (const d of this.instance.discovered) {
+			this.instance.log('debug', `Discovered ${d.model} "${d.name}" ${d.state} at ${d.address} — ${d.id}`)
 		}
 	}
 
@@ -594,10 +652,7 @@ export default class SystemApiClient {
 			return
 		}
 
-		if (this.ws) {
-			this.ws.removeAllListeners()
-			this.ws.close()
-		}
+		this.closeWebSocket()
 
 		this.ws = new WebSocket(`wss://${this.config.host}:${this.config.port}/api/v1/subscriptions/websocket/create`, {
 			rejectUnauthorized: false,

@@ -32,6 +32,8 @@ export default class ShureADPSMInstance extends InstanceBase {
 	 */
 	async init(config) {
 		this.config = config
+		// devices seen on the server, used to populate the device picker
+		this.discovered = []
 
 		this.api = new SystemApiClient(this)
 
@@ -69,8 +71,7 @@ export default class ShureADPSMInstance extends InstanceBase {
 			host: this.config.host,
 			port: this.config.port ?? 10000,
 			apiKey: this.config.apiKey,
-			deviceMode: this.config.deviceMode ?? 'auto',
-			deviceId: (this.config.deviceId ?? '').trim(),
+			device: String(this.config.device ?? 'auto').trim(),
 		})
 	}
 
@@ -100,7 +101,7 @@ export default class ShureADPSMInstance extends InstanceBase {
 				value:
 					'ADTQ/ADTD transmitters are controlled through the <b>Shure SystemAPI Server</b> (6.5.0 or later), not directly. ' +
 					'Install it from shure.com, then enter its address and shared secret API key below. ' +
-					'Discovered ADTQ/ADTD devices and their IDs are listed in the connection log.',
+					'Save, then reopen this page to pick your transmitter by name from the Device list.',
 			},
 			{
 				type: 'textinput',
@@ -124,22 +125,20 @@ export default class ShureADPSMInstance extends InstanceBase {
 			},
 			{
 				type: 'dropdown',
-				id: 'deviceMode',
-				label: 'Device Selection',
-				width: 6,
+				id: 'device',
+				label: 'Device',
+				width: 12,
 				default: 'auto',
-				choices: [
-					{ id: 'auto', label: 'First discovered ADTQ/ADTD' },
-					{ id: 'id', label: 'Specific device by ID' },
-				],
-			},
-			{
-				type: 'textinput',
-				id: 'deviceId',
-				label: 'Device ID',
-				tooltip: 'The hardware device ID (UUID) as reported by the SystemAPI Server. See the connection log.',
-				width: 6,
-				isVisible: (config) => config.deviceMode === 'id',
+				choices: this.deviceChoices(),
+				allowCustom: true,
+				regex: '/^(auto|[0-9a-fA-F-]{36})$/',
+				minChoicesForSearch: 6,
+				tooltip:
+					'Pick the transmitter this connection controls.\n\n' +
+					'The list is populated from the SystemAPI Server once this connection has ' +
+					'reached it, so on a brand new connection: fill in the address and API key, ' +
+					'save, then reopen this page and the devices will be listed by name. ' +
+					'A device ID can also be typed in directly.',
 			},
 		]
 	}
@@ -177,6 +176,31 @@ export default class ShureADPSMInstance extends InstanceBase {
 			default: choices[0]?.id ?? '',
 			choices: choices,
 		}
+	}
+
+	/**
+	 * Choices for the device picker, built from whatever the server last reported.
+	 *
+	 * @returns {Array<Object>} dropdown choices
+	 */
+	deviceChoices() {
+		const choices = [{ id: 'auto', label: 'Auto — first ADTQ/ADTD found' }]
+
+		for (const d of this.discovered ?? []) {
+			const bits = [d.model]
+			if (d.name && d.name !== d.model) {
+				bits.push(`"${d.name}"`)
+			}
+			if (d.address) {
+				bits.push(d.address)
+			}
+			if (d.state && d.state !== 'ONLINE') {
+				bits.push(`[${d.state}]`)
+			}
+			choices.push({ id: d.id, label: bits.join('  ') })
+		}
+
+		return choices
 	}
 
 	/**

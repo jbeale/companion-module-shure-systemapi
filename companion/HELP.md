@@ -18,9 +18,20 @@ Unlike Shure's older wireless products (ULX-D, QLX-D, AD4, PSM1000), the Axient 
 | SystemAPI Server IP/Host | Address of the machine running SystemAPI Server           |
 | SystemAPI Server Port    | The web server port chosen during install (default 10000) |
 | API Key                  | The shared secret from the SystemAPI Server installation  |
-| Device Selection         | Auto (first ADTQ/ADTD found) or a specific device ID      |
+| Device                   | Which transmitter this connection controls                |
 
-All ADTQ/ADTD units discovered by the server are listed with their device IDs in the connection debug log, so you can copy the ID of the unit you want into the Device ID field. Add one connection per transmitter to control several.
+**Picking your device.** Because a rack usually holds several identical transmitters,
+the Device list shows each one by name, model and IP — for example
+`ADTQ  "ADTQ B"  192.168.10.117` — so you can pick the right unit without hunting for a
+UUID.
+
+The list is filled in from the server, so on a brand new connection it starts with just
+"Auto". Enter the address and API key, **save, then reopen the config page** and your
+devices will be listed. A device ID can also be typed in directly if you prefer.
+
+Add one connection per transmitter to control several. Every device on the server is
+offered, not just ADTQ/ADTD — the available actions adapt to whatever the selected
+device reports it can do.
 
 ## What an ADTQ actually supports
 
