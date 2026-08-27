@@ -64,7 +64,10 @@ audio activity (`LOW` / `GOOD` / `CLIPPING`).
 
 These are informed guesses that only an ADTQ on a real SystemAPI Server can settle:
 
-- **Pack visibility.** Whether ADXR bodypacks appear in `GET /v1/devices` at all.
+- **Pack visibility (still open).** A real rig scanned on 2026-08-27 showed no ADXR and
+  no battery capability anywhere — but all packs were powered off, so it proved nothing.
+  Re-scan with packs on using `--snapshot` / `--diff`.
+  Whether ADXR bodypacks appear in `GET /v1/devices` at all:
   Shure's 6.5.0 release notes list only ADTD/ADTQ for Axient Digital PSM, and for
   ULX-D they note that transmitters are only reachable while docked in a charger —
   so packs may only appear when docked, or may not appear at all. If they do not,

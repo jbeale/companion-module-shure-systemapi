@@ -1,0 +1,170 @@
+[
+	{
+		"deviceId": "dd55ec36-0000-11dd-a000-000eddcccccc",
+		"model": "AD8C",
+		"serial": "2EL15926803",
+		"state": "ONLINE",
+		"address": "192.168.10.112",
+		"capabilities": [
+			"authentication",
+			"available-firmware",
+			"control-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	},
+	{
+		"deviceId": "dd55ec4f-0000-11dd-a000-000eddcccccc",
+		"model": "AD8C",
+		"serial": "2EL15919323",
+		"state": "ONLINE",
+		"address": "192.168.10.113",
+		"capabilities": [
+			"authentication",
+			"available-firmware",
+			"control-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	},
+	{
+		"deviceId": "ddae2170-0000-11dd-a000-000eddcccccc",
+		"model": "ANX4",
+		"serial": "2EL15941511",
+		"state": "ONLINE",
+		"address": "192.168.10.47",
+		"capabilities": [
+			"audio-channels",
+			"audio-channels-v2",
+			"audio-network",
+			"authentication",
+			"available-firmware",
+			"control-network",
+			"dante-audio-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"hosted-firmware",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	},
+	{
+		"deviceId": "ddb03a46-0000-11dd-a000-000eddcccccc",
+		"model": "ADTQ",
+		"serial": "2EK24560748",
+		"state": "ONLINE",
+		"address": "192.168.10.119",
+		"capabilities": [
+			"audio-channels",
+			"audio-channels-v2",
+			"audio-network",
+			"authentication",
+			"available-firmware",
+			"control-network",
+			"dante-audio-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"hosted-firmware",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	},
+	{
+		"deviceId": "ddb03a7e-0000-11dd-a000-000eddcccccc",
+		"model": "ADTQ",
+		"serial": "2EK24566275",
+		"state": "ONLINE",
+		"address": "192.168.10.110",
+		"capabilities": [
+			"audio-channels",
+			"audio-channels-v2",
+			"audio-network",
+			"authentication",
+			"available-firmware",
+			"control-network",
+			"dante-audio-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"hosted-firmware",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	},
+	{
+		"deviceId": "ddb03e18-0000-11dd-a000-000eddcccccc",
+		"model": "ADTQ",
+		"serial": "2EK24568378",
+		"state": "ONLINE",
+		"address": "192.168.10.115",
+		"capabilities": [
+			"audio-channels",
+			"audio-channels-v2",
+			"audio-network",
+			"authentication",
+			"available-firmware",
+			"control-network",
+			"dante-audio-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"hosted-firmware",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	},
+	{
+		"deviceId": "ddb05f37-0000-11dd-a000-000eddcccccc",
+		"model": "ADTQ",
+		"serial": "2EK24557919",
+		"state": "ONLINE",
+		"address": "192.168.10.117",
+		"capabilities": [
+			"audio-channels",
+			"audio-channels-v2",
+			"audio-network",
+			"authentication",
+			"available-firmware",
+			"control-network",
+			"dante-audio-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"hosted-firmware",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	},
+	{
+		"deviceId": "ddb12f58-0000-11dd-a000-000eddcccccc",
+		"model": "SBRC",
+		"serial": "VT253030492",
+		"state": "ONLINE",
+		"address": "192.168.10.17",
+		"capabilities": [
+			"available-firmware",
+			"control-network",
+			"factory-reset",
+			"firmware-update-requests",
+			"identify",
+			"name",
+			"reboot",
+			"uptime"
+		]
+	}
+]

@@ -54,10 +54,12 @@ These are not module limitations — the endpoints do not exist on the device:
 - **No mute of any kind.** ADTQ channels advertise only `activity`, `gain` and `name`;
   there is no channel mute and no device audio mute. Mute actions are therefore not
   offered when connected to an ADTQ.
-- **No battery data.** No ADPSM device reports a battery through SystemAPI. ADXR
-  bodypacks do not appear in the device list at all, and the SBRC charger reports no
-  battery capability either. Battery support is implemented (see below) and will light
-  up automatically if Shure ever exposes it, but today nothing populates it.
+- **Battery data: not yet confirmed either way.** In the one rig scanned so far
+  (4x ADTQ, 2x AD8C, ANX4, SBRC) no device advertised a battery capability and no ADXR
+  bodypack appeared in the device list — but **every pack was powered off at the time**,
+  so that scan cannot distinguish "the API never exposes packs" from "there were no packs
+  to see". Re-testing with packs powered on (and docked in the SBRC) is the open task;
+  `tools/probe.js --snapshot` / `--diff` exists to make that comparison conclusive.
 - **No RF anything.** No frequency, RF level, antenna, transmission mode, encryption or
   ShowLink status exists in SystemAPI v1.8 for any device.
 
@@ -68,8 +70,8 @@ numbered by name as Pack 1, Pack 2 and so on, with variables for level, charge s
 remaining runtime, health and cycle count, plus per-pack and any-pack low-battery
 feedbacks and a `pack_lowest_battery` variable.
 
-No Axient Digital PSM hardware currently reports a battery, so these stay hidden until
-a battery-reporting device appears on the server.
+These stay hidden until a battery-reporting device appears on the server. Whether ADPSM
+bodypacks ever do is still unverified — see above.
 
 ## Developing without hardware
 

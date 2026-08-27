@@ -31,8 +31,9 @@ const REAL_TX_CAPABILITIES = [
 const CAPABILITIES = {
 	ADTQ: [...REAL_TX_CAPABILITIES],
 	ADTD: [...REAL_TX_CAPABILITIES],
-	// Speculative: no ADPSM device has ever been observed reporting a battery
-	// through SystemAPI. Kept so the module's battery path stays exercisable.
+	// Speculative: an ADPSM bodypack has not yet been observed on a real server
+	// (the one rig scanned had every pack powered off), so this capability set is
+	// a best guess. Kept so the module's battery path stays exercisable.
 	ADXR: ['battery-level', 'battery-health', 'control-network', 'name', 'identify'],
 }
 

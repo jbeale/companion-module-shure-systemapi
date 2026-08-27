@@ -9,6 +9,11 @@
  * Usage:
  *   SHURE_API_KEY=... node tools/probe.js <host> [port]
  *   node tools/probe.js <host> [port] --key-file /path/to/key.txt
+ *
+ * Record a baseline, then compare a later scan against it (e.g. before and
+ * after powering bodypacks on) to see exactly what appeared:
+ *   node tools/probe.js <host> --key-file <k> --snapshot baseline.json
+ *   node tools/probe.js <host> --key-file <k> --diff baseline.json
  */
 
 import https from 'node:https'
@@ -112,6 +117,91 @@ for (const n of nodes) {
 	)
 	line(`  address=${n.communicationProtocol?.address ?? '-'}  protocol=${n.communicationProtocol?.name ?? '-'}`)
 	line(`  capabilities (${n.capabilities?.length ?? 0}): ${(n.capabilities ?? []).join(', ') || '(none listed)'}`)
+}
+
+// --------------------------------------------------------------- snapshot/diff
+
+const snapFlag = argv.indexOf('--snapshot')
+const diffFlag = argv.indexOf('--diff')
+
+/**
+ * Reduce the inventory to the fields worth comparing between runs.
+ * @param {Array} list - device nodes
+ * @returns {Array<Object>} comparable records
+ */
+function snapshotOf(list) {
+	return list
+		.map((n) => ({
+			deviceId: n.hardwareIdentity?.deviceId,
+			model: n.softwareIdentity?.model,
+			serial: n.hardwareIdentity?.serialNumber,
+			state: n.deviceState,
+			address: n.communicationProtocol?.address,
+			capabilities: [...(n.capabilities ?? [])].sort(),
+		}))
+		.sort((a, b) => String(a.deviceId).localeCompare(String(b.deviceId)))
+}
+
+const current = snapshotOf(nodes)
+
+if (diffFlag !== -1) {
+	rule('DIFF AGAINST BASELINE')
+	const baselinePath = argv[diffFlag + 1]
+	const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'))
+	const byId = (arr) => new Map(arr.map((d) => [d.deviceId, d]))
+	const before = byId(baseline)
+	const after = byId(current)
+
+	const added = current.filter((d) => !before.has(d.deviceId))
+	const removed = baseline.filter((d) => !after.has(d.deviceId))
+
+	line(`baseline: ${baseline.length} devices   now: ${current.length} devices\n`)
+
+	if (added.length) {
+		line(`NEW DEVICES (${added.length}):`)
+		for (const d of added) {
+			line(`  + ${d.model}  ${d.deviceId}  ${d.state}  ${d.address ?? ''}  sn=${d.serial ?? '-'}`)
+			line(`      capabilities: ${d.capabilities.join(', ') || '(none)'}`)
+			const batt = d.capabilities.filter((c) => /batt/i.test(c))
+			if (batt.length) line(`      *** BATTERY CAPABILITY: ${batt.join(', ')} ***`)
+		}
+	} else {
+		line('NEW DEVICES: none')
+	}
+
+	if (removed.length) {
+		line(`\nDEVICES GONE (${removed.length}):`)
+		for (const d of removed) line(`  - ${d.model}  ${d.deviceId}`)
+	}
+
+	line('\nCHANGED:')
+	let changes = 0
+	for (const d of current) {
+		const b = before.get(d.deviceId)
+		if (!b) continue
+		const notes = []
+		if (b.state !== d.state) notes.push(`state ${b.state} -> ${d.state}`)
+		const gained = d.capabilities.filter((c) => !b.capabilities.includes(c))
+		const lost = b.capabilities.filter((c) => !d.capabilities.includes(c))
+		if (gained.length) notes.push(`gained [${gained.join(', ')}]`)
+		if (lost.length) notes.push(`lost [${lost.join(', ')}]`)
+		if (notes.length) {
+			changes++
+			line(`  ~ ${d.model} ${d.deviceId}: ${notes.join('; ')}`)
+		}
+	}
+	if (!changes) line('  (no state or capability changes)')
+
+	const anyBattery = current.some((d) => d.capabilities.some((c) => /batt/i.test(c)))
+	line(
+		`\nVERDICT: ${anyBattery ? 'battery-reporting device(s) PRESENT' : 'still no battery-reporting device on the server'}`,
+	)
+}
+
+if (snapFlag !== -1) {
+	const out = argv[snapFlag + 1]
+	fs.writeFileSync(out, JSON.stringify(current, null, 2))
+	line(`\nSnapshot of ${current.length} devices written to ${out}`)
 }
 
 rule('PER-DEVICE ENDPOINT SUPPORT')
