@@ -134,8 +134,14 @@ export default class SystemApiClient {
 					rejectUnauthorized: false,
 					headers: {
 						'x-api-key': this.config.apiKey,
-						'Content-Type': 'application/json',
-						...(payload !== undefined ? { 'Content-Length': Buffer.byteLength(payload) } : {}),
+						// Only declare a JSON body when there is one: the server rejects
+						// `Content-Type: application/json` with an empty body ("Body cannot
+						// be empty when content-type is set to 'application/json'"), which
+						// would otherwise fail every bodyless POST — including all
+						// subscription registrations.
+						...(payload !== undefined
+							? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+							: {}),
 					},
 					timeout: 5000,
 				},
@@ -442,10 +448,11 @@ export default class SystemApiClient {
 			await this.loadChannels(list)
 		}
 
-		this.instance.setVariableValues({
-			device_name: this.device.name,
-			audio_mute: this.device.audioMute ? 'Muted' : 'Unmuted',
-		})
+		const deviceValues = { device_name: this.device.name }
+		if (has('audio-mute')) {
+			deviceValues.audio_mute = this.device.audioMute ? 'Muted' : 'Unmuted'
+		}
+		this.instance.setVariableValues(deviceValues)
 		this.instance.checkFeedbacks('device_muted', 'identifying')
 	}
 
@@ -459,7 +466,7 @@ export default class SystemApiClient {
 
 		for (const ch of list) {
 			// only surface channels the user can actually do something with
-			if (!ch.capabilities.some((c) => ['mute', 'gain', 'name'].includes(c))) {
+			if (!ch.capabilities.some((c) => ['mute', 'gain', 'name', 'activity'].includes(c))) {
 				continue
 			}
 
@@ -477,6 +484,7 @@ export default class SystemApiClient {
 					muted: false,
 					gain: null,
 					gainRange: null,
+					activity: '',
 				}
 				this.channels.set(ch.id, channel)
 			} else {
@@ -507,8 +515,13 @@ export default class SystemApiClient {
 					? this.request('GET', `/v1/devices/${id}/audio-channels/${encodeURIComponent(ch.id)}/gain/description`)
 					: null,
 			)
+			reqs.push(
+				channel.capabilities.includes('activity')
+					? this.request('GET', `/v1/devices/${id}/audio-channels/${encodeURIComponent(ch.id)}/activity`)
+					: null,
+			)
 
-			const [name, mute, gain, gainDesc] = (await Promise.allSettled(reqs)).map((r) =>
+			const [name, mute, gain, gainDesc, activity] = (await Promise.allSettled(reqs)).map((r) =>
 				r.status === 'fulfilled' ? r.value : null,
 			)
 
@@ -523,6 +536,9 @@ export default class SystemApiClient {
 			}
 			if (gainDesc?.constraints?.gain?.range) {
 				channel.gainRange = gainDesc.constraints.gain.range
+			}
+			if (activity) {
+				channel.activity = activity.audioLevel ?? ''
 			}
 		}
 
@@ -546,7 +562,16 @@ export default class SystemApiClient {
 	decodeChannelIndex(channelId) {
 		try {
 			const decoded = JSON.parse(Buffer.from(channelId, 'base64').toString('utf8'))
-			return typeof decoded.index === 'number' ? decoded.index : -1
+			// Axient Digital PSM uses a compact descriptor where the index is `i`
+			// (e.g. {"t":"AudioChannel","c":"ADTQ","v":131088,"s":"CH","i":0}), while
+			// other Shure devices use the longer form with `index`.
+			if (typeof decoded.i === 'number') {
+				return decoded.i
+			}
+			if (typeof decoded.index === 'number') {
+				return decoded.index
+			}
+			return -1
 		} catch (_err) {
 			return -1
 		}
@@ -649,6 +674,9 @@ export default class SystemApiClient {
 				if (ch.capabilities.includes('name')) {
 					subs.push(`/v1/devices/${id}/audio-channels/${chId}/name/subscription/${t}`)
 				}
+				if (ch.capabilities.includes('activity')) {
+					subs.push(`/v1/devices/${id}/audio-channels/${chId}/activity/subscription/${t}`)
+				}
 			}
 		}
 
@@ -735,6 +763,16 @@ export default class SystemApiClient {
 				if (ch) {
 					ch.gain = body.gain
 					this.instance.setVariableValues({ [`ch_${ch.index + 1}_gain`]: ch.gain })
+				}
+				break
+			}
+
+			case 'AUDIO_CHANNEL_ACTIVITY': {
+				const ch = this.channels.get(audioChannelId)
+				if (ch && ch.activity !== body.audioLevel) {
+					ch.activity = body.audioLevel
+					this.instance.setVariableValues({ [`ch_${ch.index + 1}_activity`]: ch.activity })
+					this.instance.checkFeedbacks('channel_activity')
 				}
 				break
 			}

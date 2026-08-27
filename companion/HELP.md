@@ -22,44 +22,54 @@ Unlike Shure's older wireless products (ULX-D, QLX-D, AD4, PSM1000), the Axient 
 
 All ADTQ/ADTD units discovered by the server are listed with their device IDs in the connection debug log, so you can copy the ID of the unit you want into the Device ID field. Add one connection per transmitter to control several.
 
-## Actions
+## What an ADTQ actually supports
 
-- Channel mute / unmute / toggle
-- Channel gain set / increase / decrease (clamped to the device-reported range)
-- Channel name set
-- Device audio mute
-- Identify device (flash front panel)
-- Device name set
+Verified against a real ADTQ (firmware 1.2.1.1) on SystemAPI Server 6.10. The module
+publishes actions and feedbacks based on what each device advertises, so you only see
+controls the connected hardware can perform.
+
+**Actions**
+
+- Channel gain — set, increase/decrease (clamped to the device-reported range, −20 to +16 dB on ADTQ)
+- Channel name — set
+- Device name — set
+- Identify device (flash the front panel)
 - Reboot device
 
-## Feedbacks
+**Feedbacks**
 
-- **Any pack battery below threshold** — the one to put on a button for low-battery alerts
-- **Pack battery below threshold** — per pack, optionally also triggering when that pack goes offline
-- **Pack is charging**
-- Channel is muted
-- Device audio is muted
+- **Channel audio activity** — LOW / GOOD / CLIPPING, pushed by the server every 5 seconds
 - Device is identifying
 - Device is online
 
-## Battery monitoring
+**Variables**
 
-Every battery-reporting device the server knows about (ADXR bodypacks) is tracked
-automatically and numbered by name as Pack 1, Pack 2, and so on. No configuration is
-needed — add packs to the network and they appear.
+Device name, model, firmware, state, IP address, and per channel: name, gain and
+audio activity.
 
-Per pack: `pack_N_name`, `pack_N_model`, `pack_N_battery`, `pack_N_battery_state`
-(CHARGING / DISCHARGING / FULL / EMPTY / CALCULATING / OPTIMAL_STORAGE),
-`pack_N_runtime` (H:MM remaining), `pack_N_runtime_minutes`, `pack_N_health`,
-`pack_N_cycles` and `pack_N_state`.
+## Things the Axient Digital PSM does not expose
 
-Across all packs: `pack_count` and `pack_lowest_battery` — the latter is handy on a
-single "worst pack on stage" button.
+These are not module limitations — the endpoints do not exist on the device:
 
-## Variables
+- **No mute of any kind.** ADTQ channels advertise only `activity`, `gain` and `name`;
+  there is no channel mute and no device audio mute. Mute actions are therefore not
+  offered when connected to an ADTQ.
+- **No battery data.** No ADPSM device reports a battery through SystemAPI. ADXR
+  bodypacks do not appear in the device list at all, and the SBRC charger reports no
+  battery capability either. Battery support is implemented (see below) and will light
+  up automatically if Shure ever exposes it, but today nothing populates it.
+- **No RF anything.** No frequency, RF level, antenna, transmission mode, encryption or
+  ShowLink status exists in SystemAPI v1.8 for any device.
 
-Device name, model, firmware, state, IP address, per-channel name/mute/gain, and the
-pack battery variables above.
+## Battery monitoring (for devices that report it)
+
+Any device the server reports with a battery capability is tracked automatically and
+numbered by name as Pack 1, Pack 2 and so on, with variables for level, charge state,
+remaining runtime, health and cycle count, plus per-pack and any-pack low-battery
+feedbacks and a `pack_lowest_battery` variable.
+
+No Axient Digital PSM hardware currently reports a battery, so these stay hidden until
+a battery-reporting device appears on the server.
 
 ## Developing without hardware
 
@@ -71,18 +81,18 @@ yarn mock
 ```
 
 It serves the Shure-compatible API on `https://127.0.0.1:10000` and a browser control
-panel on `http://127.0.0.1:10001` for creating transmitters and packs and driving
-battery levels, mute, gain and activity in real time. See `tools/mock-server/README.md`.
+panel on `http://127.0.0.1:10001`. Its ADTQ model mirrors the real one exactly
+(capabilities, gain range, channel-id encoding), so what works against the mock works
+against hardware. See `tools/mock-server/README.md`.
 
-## Known limitations
+## Inspecting a real server
 
-Shure's SystemAPI (v1.8) exposes **no RF-related endpoints at all** — RF mute/power,
-frequency, transmission mode, encryption status and ShowLink status are not available
-through the API for any device. The closest available signal is per-channel audio
-activity (LOW / GOOD / CLIPPING). If Shure adds RF capabilities in a future SystemAPI
-release they can be added here.
+To see exactly what a SystemAPI Server exposes:
 
-Whether ADXR bodypacks appear as devices on the SystemAPI Server has not yet been
-confirmed against real hardware — Shure's release notes list only ADTD/ADTQ for
-Axient Digital PSM. If packs turn out to only be visible while docked in an SBC441
-charger, the battery features will reflect that.
+```
+node tools/probe.js <server-ip> 10000 --key-file ~/.shure-api-key
+```
+
+It reports the device inventory, every device's capabilities and operation IDs, channel
+details with decoded channel IDs, and a live WebSocket subscription test. Read-only
+apart from opening subscriptions.

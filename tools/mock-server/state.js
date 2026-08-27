@@ -9,10 +9,31 @@
 import { EventEmitter } from 'node:events'
 
 /** Capability names advertised per model. */
+// Verified against a real ADTQ (firmware 1.2.1.1) on SystemAPI Server 6.10:
+// no audio-mute, no user-presets, no battery, no RF of any kind.
+const REAL_TX_CAPABILITIES = [
+	'audio-channels',
+	'audio-channels-v2',
+	'audio-network',
+	'authentication',
+	'available-firmware',
+	'control-network',
+	'dante-audio-network',
+	'factory-reset',
+	'firmware-update-requests',
+	'hosted-firmware',
+	'identify',
+	'name',
+	'reboot',
+	'uptime',
+]
+
 const CAPABILITIES = {
-	ADTQ: ['audio-mute', 'audio-network', 'control-network', 'name', 'identify', 'user-presets', 'firmware-version'],
-	ADTD: ['audio-mute', 'audio-network', 'control-network', 'name', 'identify', 'user-presets', 'firmware-version'],
-	ADXR: ['battery-level', 'battery-health', 'control-network', 'name', 'identify', 'firmware-version'],
+	ADTQ: [...REAL_TX_CAPABILITIES],
+	ADTD: [...REAL_TX_CAPABILITIES],
+	// Speculative: no ADPSM device has ever been observed reporting a battery
+	// through SystemAPI. Kept so the module's battery path stays exercisable.
+	ADXR: ['battery-level', 'battery-health', 'control-network', 'name', 'identify'],
 }
 
 const CHANNEL_COUNT = { ADTQ: 4, ADTD: 2, ADXR: 0 }
@@ -43,11 +64,13 @@ function makeDeviceId() {
  * @returns {string} base64 audio channel id
  */
 function makeChannelId(deviceId, index) {
+	// matches the real ADTQ descriptor: {"t","c","v","s","i"} with the index in `i`
 	const payload = {
-		address: { hardwareId: deviceId.toLowerCase() },
-		type: 'ADPSMChannelOutput',
-		structure: `CH=${index}`,
-		index: index,
+		t: 'AudioChannel',
+		c: 'ADTQ',
+		v: 131088,
+		s: 'CH',
+		i: index,
 	}
 	return Buffer.from(JSON.stringify(payload)).toString('base64')
 }
@@ -108,12 +131,13 @@ export class SimState extends EventEmitter {
 				index: i,
 				name: `Ch ${i + 1}`,
 				muted: false,
-				gain: 0,
-				gainRange: { min: -25, max: 15, step: 1 },
-				activity: 'GOOD',
-				role: 'SINK',
+				gain: 6,
+				gainRange: { min: -20, max: 16, step: 1 },
+				activity: 'LOW',
+				role: 'SOURCE',
 				group: 'GENERIC',
-				capabilities: ['mute', 'gain', 'name', 'activity'],
+				// real ADTQ channels expose no mute
+				capabilities: ['activity', 'gain', 'name'],
 			})
 		}
 

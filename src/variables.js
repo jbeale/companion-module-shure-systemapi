@@ -11,18 +11,27 @@ export function updateVariables() {
 		firmware: { name: 'Firmware Version' },
 		device_state: { name: 'Device State' },
 		ip_address: { name: 'IP Address' },
-		audio_mute: { name: 'Device Audio Mute' },
+	}
+
+	if (this.api.device.capabilities.includes('audio-mute')) {
+		variables.audio_mute = { name: 'Device Audio Mute' }
 	}
 
 	for (const ch of this.api.getChannels()) {
 		const n = ch.index + 1
 		variables[`ch_${n}_name`] = { name: `Channel ${n} Name` }
-		variables[`ch_${n}_mute`] = { name: `Channel ${n} Mute` }
+		if (ch.capabilities.includes('mute')) {
+			variables[`ch_${n}_mute`] = { name: `Channel ${n} Mute` }
+		}
 		variables[`ch_${n}_gain`] = { name: `Channel ${n} Gain (dB)` }
+		variables[`ch_${n}_activity`] = { name: `Channel ${n} Audio Activity` }
 	}
 
-	variables.pack_count = { name: 'Pack Count' }
-	variables.pack_lowest_battery = { name: 'Lowest Pack Battery (%)' }
+	// pack variables only appear when the server actually reports battery devices
+	if (this.api.packs.size > 0) {
+		variables.pack_count = { name: 'Pack Count' }
+		variables.pack_lowest_battery = { name: 'Lowest Pack Battery (%)' }
+	}
 
 	this.api.getPacks().forEach((_pack, i) => {
 		const n = i + 1
@@ -43,8 +52,11 @@ export function updateVariables() {
 	for (const ch of this.api.getChannels()) {
 		const n = ch.index + 1
 		values[`ch_${n}_name`] = ch.name
-		values[`ch_${n}_mute`] = ch.muted ? 'Muted' : 'Unmuted'
+		if (ch.capabilities.includes('mute')) {
+			values[`ch_${n}_mute`] = ch.muted ? 'Muted' : 'Unmuted'
+		}
 		values[`ch_${n}_gain`] = ch.gain ?? ''
+		values[`ch_${n}_activity`] = ch.activity ?? ''
 	}
 	this.setVariableValues(values)
 

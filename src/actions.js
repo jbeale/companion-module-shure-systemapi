@@ -1,10 +1,17 @@
 /**
  * Define the actions for the module.
  *
+ * Actions are published according to what the connected device actually
+ * advertises. A real ADTQ, for example, offers gain/name/activity on its
+ * channels but no mute at all, so no mute action is presented for it.
+ *
  * @this {import('./main.js').default}
  */
 export function updateActions() {
 	const api = this.api
+
+	const deviceHas = (cap) => api.device.capabilities.includes(cap)
+	const anyChannelHas = (cap) => [...api.channels.values()].some((c) => c.capabilities.includes(cap))
 
 	const sendChannelPatch = async (channelId, capability, body) => {
 		try {
@@ -18,22 +25,30 @@ export function updateActions() {
 		}
 	}
 
-	this.setActionDefinitions({
-		channel_mute: {
+	const MODE_FIELD = (label, choices, def) => ({
+		type: 'dropdown',
+		label: label,
+		id: 'choice',
+		default: def,
+		choices: choices,
+	})
+
+	const actions = {}
+
+	if (anyChannelHas('mute')) {
+		actions.channel_mute = {
 			name: 'Channel Mute',
 			options: [
 				this.CHANNELS_FIELD(),
-				{
-					type: 'dropdown',
-					label: 'Mute / Unmute / Toggle',
-					id: 'choice',
-					default: 'mute',
-					choices: [
+				MODE_FIELD(
+					'Mute / Unmute / Toggle',
+					[
 						{ id: 'mute', label: 'Mute' },
 						{ id: 'unmute', label: 'Unmute' },
 						{ id: 'toggle', label: 'Toggle' },
 					],
-				},
+					'mute',
+				),
 			],
 			callback: async ({ options }) => {
 				const ch = api.channels.get(options.channel)
@@ -43,8 +58,11 @@ export function updateActions() {
 				const muted = options.choice === 'toggle' ? !ch.muted : options.choice === 'mute'
 				await sendChannelPatch(ch.id, 'mute', { muted: muted })
 			},
-		},
-		channel_gain_set: {
+		}
+	}
+
+	if (anyChannelHas('gain')) {
+		actions.channel_gain_set = {
 			name: 'Channel Gain (Set)',
 			options: [
 				this.CHANNELS_FIELD(),
@@ -65,8 +83,9 @@ export function updateActions() {
 				}
 				await sendChannelPatch(ch.id, 'gain', { gain: this.clampGain(ch, gain) })
 			},
-		},
-		channel_gain_adjust: {
+		}
+
+		actions.channel_gain_adjust = {
 			name: 'Channel Gain (Increase/Decrease)',
 			options: [
 				this.CHANNELS_FIELD(),
@@ -86,8 +105,11 @@ export function updateActions() {
 				}
 				await sendChannelPatch(ch.id, 'gain', { gain: this.clampGain(ch, ch.gain + options.amount) })
 			},
-		},
-		channel_name_set: {
+		}
+	}
+
+	if (anyChannelHas('name')) {
+		actions.channel_name_set = {
 			name: 'Channel Name (Set)',
 			options: [
 				this.CHANNELS_FIELD(),
@@ -107,21 +129,22 @@ export function updateActions() {
 				}
 				await sendChannelPatch(ch.id, 'name', { name: name })
 			},
-		},
-		device_mute: {
+		}
+	}
+
+	if (deviceHas('audio-mute')) {
+		actions.device_mute = {
 			name: 'Device Audio Mute',
 			options: [
-				{
-					type: 'dropdown',
-					label: 'Mute / Unmute / Toggle',
-					id: 'choice',
-					default: 'mute',
-					choices: [
+				MODE_FIELD(
+					'Mute / Unmute / Toggle',
+					[
 						{ id: 'mute', label: 'Mute' },
 						{ id: 'unmute', label: 'Unmute' },
 						{ id: 'toggle', label: 'Toggle' },
 					],
-				},
+					'mute',
+				),
 			],
 			callback: async ({ options }) => {
 				const muted = options.choice === 'toggle' ? !api.device.audioMute : options.choice === 'mute'
@@ -131,21 +154,22 @@ export function updateActions() {
 					this.log('error', `Failed to set device mute: ${err.message}`)
 				}
 			},
-		},
-		identify: {
+		}
+	}
+
+	if (deviceHas('identify')) {
+		actions.identify = {
 			name: 'Identify Device (Flash)',
 			options: [
-				{
-					type: 'dropdown',
-					label: 'Start / Stop / Toggle',
-					id: 'choice',
-					default: 'start',
-					choices: [
+				MODE_FIELD(
+					'Start / Stop / Toggle',
+					[
 						{ id: 'start', label: 'Start' },
 						{ id: 'stop', label: 'Stop' },
 						{ id: 'toggle', label: 'Toggle' },
 					],
-				},
+					'start',
+				),
 			],
 			callback: async ({ options }) => {
 				const start = options.choice === 'toggle' ? !api.device.identifying : options.choice === 'start'
@@ -155,8 +179,11 @@ export function updateActions() {
 					this.log('error', `Failed to identify: ${err.message}`)
 				}
 			},
-		},
-		device_name_set: {
+		}
+	}
+
+	if (deviceHas('name')) {
+		actions.device_name_set = {
 			name: 'Device Name (Set)',
 			options: [
 				{
@@ -178,8 +205,11 @@ export function updateActions() {
 					this.log('error', `Failed to set device name: ${err.message}`)
 				}
 			},
-		},
-		reboot: {
+		}
+	}
+
+	if (deviceHas('reboot')) {
+		actions.reboot = {
 			name: 'Reboot Device',
 			options: [],
 			callback: async () => {
@@ -189,6 +219,8 @@ export function updateActions() {
 					this.log('error', `Failed to reboot: ${err.message}`)
 				}
 			},
-		},
-	})
+		}
+	}
+
+	this.setActionDefinitions(actions)
 }

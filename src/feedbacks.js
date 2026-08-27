@@ -8,7 +8,10 @@ import { combineRgb } from '@companion-module/base'
 export function updateFeedbacks() {
 	const api = this.api
 
-	this.setFeedbackDefinitions({
+	const deviceHas = (cap) => api.device.capabilities.includes(cap)
+	const anyChannelHas = (cap) => [...api.channels.values()].some((c) => c.capabilities.includes(cap))
+
+	const all = {
 		channel_muted: {
 			type: 'boolean',
 			name: 'Channel Is Muted',
@@ -43,6 +46,33 @@ export function updateFeedbacks() {
 			options: [],
 			callback: () => {
 				return api.device.identifying === true
+			},
+		},
+		channel_activity: {
+			type: 'boolean',
+			name: 'Channel Audio Activity',
+			description:
+				'Turns on when the channel reports the selected audio level. The server pushes activity every 5 seconds.',
+			defaultStyle: {
+				color: combineRgb(0, 0, 0),
+				bgcolor: combineRgb(63, 187, 117),
+			},
+			options: [
+				this.CHANNELS_FIELD(),
+				{
+					type: 'dropdown',
+					label: 'Audio level',
+					id: 'level',
+					default: 'GOOD',
+					choices: [
+						{ id: 'LOW', label: 'LOW — little or no signal' },
+						{ id: 'GOOD', label: 'GOOD — healthy level' },
+						{ id: 'CLIPPING', label: 'CLIPPING — too hot' },
+					],
+				},
+			],
+			callback: ({ options }) => {
+				return api.channels.get(options.channel)?.activity === options.level
 			},
 		},
 		pack_battery_low: {
@@ -129,5 +159,20 @@ export function updateFeedbacks() {
 				return api.device.state === 'ONLINE'
 			},
 		},
-	})
+	}
+
+	// only publish feedbacks the connected device can actually drive
+	const supported = {}
+	for (const [id, def] of Object.entries(all)) {
+		if (id === 'channel_muted' && !anyChannelHas('mute')) continue
+		if (id === 'channel_activity' && !anyChannelHas('activity')) continue
+		if (id === 'device_muted' && !deviceHas('audio-mute')) continue
+		if (id === 'identifying' && !deviceHas('identify')) continue
+		if (id.startsWith('pack_') || id === 'any_pack_battery_low') {
+			if (api.packs.size === 0) continue
+		}
+		supported[id] = def
+	}
+
+	this.setFeedbackDefinitions(supported)
 }
