@@ -613,9 +613,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shure-adpsm@workspace:.":
+"shure-systemapi@workspace:.":
   version: 0.0.0-use.local
-  resolution: "shure-adpsm@workspace:."
+  resolution: "shure-systemapi@workspace:."
   dependencies:
     "@companion-module/base": "npm:~2.0.4"
     "@companion-module/tools": "npm:^3.0.1"
