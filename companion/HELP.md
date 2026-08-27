@@ -1,10 +1,26 @@
-# Shure Axient Digital PSM (ADTQ/ADTD)
+# Shure SystemAPI
 
-This module controls Shure Axient Digital PSM in-ear monitoring transmitters (ADTQ and ADTD).
+Monitor and control Shure devices through the **Shure SystemAPI Server**.
 
-## Requirements — please read first
+One Companion connection controls one device. Actions, feedbacks and variables are
+built from the capabilities that device reports, so the same module serves an Axient
+Digital PSM transmitter, an ANX4 receiver, a bodypack or a networked charger with no
+model-specific configuration.
 
-Unlike Shure's older wireless products (ULX-D, QLX-D, AD4, PSM1000), the Axient Digital PSM transmitters do **not** offer a direct TCP command-string interface. Shure only exposes third-party control through their **SystemAPI Server** application:
+## Which Shure module should I use?
+
+| If you have | Use |
+| --- | --- |
+| **Axient Digital PSM (ADTQ / ADTD)** | **This module** — these have no other control protocol at all |
+| A device only SystemAPI supports, or you already run SystemAPI | This module |
+| ULX-D, QLX-D, SLX-D, Axient Digital receivers | `shure-wireless` — direct TCP, no middleware, and it exposes RF data this API does not |
+| MXA microphones, P300, MXN, chargers | The existing dedicated Shure modules |
+
+SystemAPI is a Windows application sitting between Companion and your gear. That is a
+real operational cost, and it is worth paying when it is the only option — as it is for
+Axient Digital PSM — or when the server is already part of your system.
+
+## Requirements
 
 - Download SystemAPI Server (**version 6.5.0 or later** — the version that added ADTQ/ADTD support) from [shure.com](https://www.shure.com/en-US/products/software/systemapi).
 - It runs on **Windows** (10/11 or Server 2016+) on the same network as your transmitters.
@@ -33,11 +49,18 @@ Add one connection per transmitter to control several. Every device on the serve
 offered, not just ADTQ/ADTD — the available actions adapt to whatever the selected
 device reports it can do.
 
-## What an ADTQ actually supports
+## What you get depends on the device
 
-Verified against a real ADTQ (firmware 1.2.1.1) on SystemAPI Server 6.10. The module
-publishes actions and feedbacks based on what each device advertises, so you only see
-controls the connected hardware can perform.
+The module publishes only what the selected device advertises. Two devices on the same
+server can therefore offer different controls — verified on real hardware:
+
+| | ADTQ (Axient Digital PSM) | ANX4 (receiver) |
+| --- | --- | --- |
+| Channels | 4 | 12 |
+| Channel capabilities | `activity, gain, name` | `activity, gain, mute, name` |
+| Channel mute action | not offered | offered |
+
+Below is what an ADTQ supports, verified against firmware 1.2.1.1 on SystemAPI Server 6.10.
 
 **Actions**
 
@@ -60,7 +83,9 @@ audio activity.
 
 ## Things the Axient Digital PSM does not expose
 
-These are not module limitations — the endpoints do not exist on the device:
+These are not module limitations — the endpoints do not exist on that device. Other
+devices on the same server may well expose them (an ANX4's channels have mute, for
+instance):
 
 - **No mute of any kind.** ADTQ channels advertise only `activity`, `gain` and `name`;
   there is no channel mute and no device audio mute. Mute actions are therefore not

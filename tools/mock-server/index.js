@@ -90,10 +90,12 @@ function loadCert() {
 
 const state = new SimState()
 
-// A sensible starting rig: one quad transmitter with two packs on it.
-const adtq = state.addDevice('ADTQ', { name: 'IEM Rack 1' })
-state.addDevice('ADXR', { name: 'Lead Vox Pack', parentId: adtq.deviceId, parentChannel: 1 })
-state.addDevice('ADXR', { name: 'Drummer Pack', parentId: adtq.deviceId, parentChannel: 2 })
+// A starting rig that covers the interesting variety: an ADPSM transmitter
+// (no mute), an ANX4 receiver (channels DO have mute) and two battery packs.
+const adtq = state.addDevice('ADTQ', { name: 'ADTQ A' })
+state.addDevice('ANX4', { name: 'ANX4 Rack' })
+state.addDevice('ULXD6', { name: 'Lead Vox Pack', parentId: adtq.deviceId, parentChannel: 1 })
+state.addDevice('ULXD8', { name: 'Handheld 1', parentId: adtq.deviceId, parentChannel: 2 })
 state.start()
 
 // ---------------------------------------------------------------- API server

@@ -1,10 +1,10 @@
 {
 	"$schema": "../node_modules/@companion-module/base/assets/manifest.schema.json",
 	"type": "connection",
-	"id": "shure-adpsm",
-	"name": "shure-adpsm",
-	"shortname": "shure-adpsm",
-	"description": "Control Shure Axient Digital PSM transmitters (ADTQ/ADTD) via the Shure SystemAPI Server",
+	"id": "shure-systemapi",
+	"name": "shure-systemapi",
+	"shortname": "shure-api",
+	"description": "Monitor and control Shure devices through the Shure SystemAPI Server \u2014 including Axient Digital PSM (ADTQ/ADTD), which has no other control protocol",
 	"version": "0.0.0",
 	"license": "MIT",
 	"repository": "git+https://github.com/jbeale/companion-module-shure-adpsm.git",
@@ -15,7 +15,9 @@
 			"email": "justinbeale92@gmail.com"
 		}
 	],
-	"legacyIds": [],
+	"legacyIds": [
+		"shure-adpsm"
+	],
 	"runtime": {
 		"type": "node22",
 		"api": "nodejs-ipc",
@@ -23,6 +25,22 @@
 		"entrypoint": "../src/main.js"
 	},
 	"manufacturer": "Shure",
-	"products": ["Axient Digital PSM (ADTQ, ADTD)"],
-	"keywords": ["IEM", "In-Ear Monitoring", "Wireless"]
+	"products": [
+		"Axient Digital PSM (ADTQ, ADTD)",
+		"Axient Digital (AD4D, AD4Q, AD600, AD8C)",
+		"Scalable Wireless (ANX4)",
+		"ULX-D (ULXD4/D/Q, ULXD6, ULXD8)",
+		"Microflex Wireless (MXW)",
+		"Networked Chargers (SBC series, SBRC)",
+		"MXA Microphones",
+		"P300 / IntelliMix"
+	],
+	"keywords": [
+		"IEM",
+		"In-Ear Monitoring",
+		"Wireless",
+		"Battery",
+		"SystemAPI",
+		"Shure"
+	]
 }

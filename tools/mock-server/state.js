@@ -31,13 +31,30 @@ const REAL_TX_CAPABILITIES = [
 const CAPABILITIES = {
 	ADTQ: [...REAL_TX_CAPABILITIES],
 	ADTD: [...REAL_TX_CAPABILITIES],
+	// ANX4 verified on the same rig: same device capabilities as an ADTQ, but its
+	// channels DO expose mute, which ADPSM channels do not.
+	ANX4: [...REAL_TX_CAPABILITIES],
+	// ULXD6 (bodypack) and ULXD8 (handheld) are battery-powered transmitters on
+	// Shure's SystemAPI supported list. Capability names are inferred from the
+	// endpoint paths and have not been confirmed on hardware.
+	ULXD6: ['battery-level', 'battery-health', 'control-network', 'name', 'identify', 'uptime'],
+	ULXD8: ['battery-level', 'battery-health', 'control-network', 'name', 'identify', 'uptime'],
 	// Speculative: an ADPSM bodypack has not yet been observed on a real server
 	// (the one rig scanned had every pack powered off), so this capability set is
 	// a best guess. Kept so the module's battery path stays exercisable.
 	ADXR: ['battery-level', 'battery-health', 'control-network', 'name', 'identify'],
 }
 
-const CHANNEL_COUNT = { ADTQ: 4, ADTD: 2, ADXR: 0 }
+const CHANNEL_COUNT = { ADTQ: 4, ADTD: 2, ANX4: 12, ULXD6: 0, ULXD8: 0, ADXR: 0 }
+
+/** Channel capability sets differ by family; ANX4 has mute, ADPSM does not. */
+const CHANNEL_CAPABILITIES = {
+	ANX4: ['activity', 'gain', 'mute', 'name'],
+	DEFAULT: ['activity', 'gain', 'name'],
+}
+
+/** Models that report a battery. */
+const BATTERY_MODELS = new Set(['ULXD6', 'ULXD8', 'ADXR'])
 
 /** Battery states from the DeviceBatteryState enum. */
 export const BATTERY_STATES = ['CHARGING', 'DISCHARGING', 'FULL', 'EMPTY', 'CALCULATING', 'OPTIMAL_STORAGE']
@@ -137,12 +154,12 @@ export class SimState extends EventEmitter {
 				activity: 'LOW',
 				role: 'SOURCE',
 				group: 'GENERIC',
-				// real ADTQ channels expose no mute
-				capabilities: ['activity', 'gain', 'name'],
+				// ADPSM channels expose no mute; ANX4 channels do
+				capabilities: [...(CHANNEL_CAPABILITIES[model] ?? CHANNEL_CAPABILITIES.DEFAULT)],
 			})
 		}
 
-		if (model === 'ADXR') {
+		if (BATTERY_MODELS.has(model)) {
 			device.battery = {
 				percentage: 87,
 				state: 'DISCHARGING',

@@ -219,8 +219,11 @@
 		<div class="bar">
 			<strong>Add</strong>
 			<select id="newmodel">
-				<option value="ADTQ">ADTQ — quad transmitter</option>
-				<option value="ADTD">ADTD — dual transmitter</option>
+				<option value="ADTQ">ADTQ — quad PSM transmitter (no mute)</option>
+				<option value="ADTD">ADTD — dual PSM transmitter (no mute)</option>
+				<option value="ANX4">ANX4 — 12ch receiver (channels have mute)</option>
+				<option value="ULXD6">ULXD6 — bodypack (battery)</option>
+				<option value="ULXD8">ULXD8 — handheld (battery)</option>
 			</select>
 			<input type="text" id="newname" placeholder="Name (optional)" />
 			<button id="adddev">Add transmitter</button>
@@ -424,7 +427,7 @@
 						return
 					}
 					if (act === 'addpack') {
-						post({ action: 'addDevice', model: 'ADXR', parentId: deviceId }).then(() => (lastKeys = ''))
+						post({ action: 'addDevice', model: 'ULXD6', parentId: deviceId }).then(() => (lastKeys = ''))
 						return
 					}
 					if (act === 'toggleonline') {

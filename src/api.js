@@ -5,11 +5,13 @@ import { InstanceStatus } from '@companion-module/base'
 /**
  * Client for the Shure SystemAPI Server (REST + WebSocket subscriptions).
  *
- * ADTQ/ADTD transmitters do not expose a direct TCP/REST interface; all
- * monitoring and control goes through Shure's SystemAPI Server middleware.
- * REST calls carry the shared secret in the `x-api-key` header. Realtime
- * updates arrive over a WebSocket that is bound to REST subscriptions via
- * a transportId.
+ * The server is a Windows middleware application that fronts every Shure device
+ * on the network. Everything here is capability-driven rather than model-driven,
+ * per Shure's own guidance: a device advertises what it can do and the module
+ * exposes exactly that, so new models work without code changes.
+ *
+ * REST calls carry the shared secret in the `x-api-key` header. Realtime updates
+ * arrive over a WebSocket that is bound to REST subscriptions via a transportId.
  */
 export default class SystemApiClient {
 	/**
@@ -38,7 +40,7 @@ export default class SystemApiClient {
 		}
 		// audioChannelId (base64 string) -> channel state object
 		this.channels = new Map()
-		// deviceId -> battery-capable device (ADXR bodypack etc.), sorted by name for display
+		// deviceId -> battery-capable device (bodypack, handheld, docked transmitter)
 		this.packs = new Map()
 	}
 
@@ -225,7 +227,7 @@ export default class SystemApiClient {
 	}
 
 	/**
-	 * Discover devices, pick the configured ADPSM transmitter, and load its state.
+	 * Discover devices, pick the configured device, and load its state.
 	 */
 	async refreshDevice() {
 		const devices = await this.request('GET', '/v1/devices')
@@ -247,9 +249,16 @@ export default class SystemApiClient {
 				throw new Error(`Selected device ${selected} is not on the server. Available: ${known || 'none'}`)
 			}
 		} else {
-			target = adpsm[0]
+			// 'auto': prefer an Axient Digital PSM transmitter (the case with no other
+			// control protocol), then any device exposing audio channels, then anything.
+			target =
+				adpsm[0] ??
+				list.find((d) => d.capabilities?.includes('audio-channels')) ??
+				list.find((d) => d.deviceState === 'ONLINE') ??
+				list[0]
+
 			if (!target) {
-				throw new Error('No ADTQ/ADTD found on SystemAPI Server')
+				throw new Error('No devices found on the SystemAPI Server')
 			}
 		}
 
@@ -320,8 +329,9 @@ export default class SystemApiClient {
 	}
 
 	/**
-	 * Track every battery-capable device on the server (ADXR bodypacks and
-	 * anything else reporting a battery) and load its battery state.
+	 * Track every battery-capable device on the server — bodypacks and handhelds
+	 * such as ULXD6/ULXD8 and the MXW range, plus anything else reporting a
+	 * battery — and load its battery state.
 	 *
 	 * The API exposes no parent/child link between a transmitter and its packs,
 	 * so all battery devices on the server are surfaced, ordered by name.

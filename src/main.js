@@ -7,16 +7,20 @@ import SystemApiClient from './api.js'
 export { UpgradeScripts } from './upgrades.js'
 
 /**
- * Companion instance class for Shure Axient Digital PSM transmitters
- * (ADTQ/ADTD), controlled via the Shure SystemAPI Server.
+ * Companion instance class for Shure devices reached through the Shure
+ * SystemAPI Server.
  *
- * Unlike Shure's older wireless products there is no direct TCP command
- * string interface on these devices; Shure only exposes them through the
- * SystemAPI Server middleware (REST + WebSocket).
+ * One connection controls one device. Actions, feedbacks and variables are
+ * published from the capabilities that device advertises, so the same module
+ * serves an Axient Digital PSM transmitter, an ANX4 receiver or a networked
+ * charger without model-specific code.
+ *
+ * Axient Digital PSM (ADTQ/ADTD) is the headline case because it has no other
+ * control protocol at all — no TCP command strings, no device-hosted API.
  *
  * @extends InstanceBase
  */
-export default class ShureADPSMInstance extends InstanceBase {
+export default class ShureSystemApiInstance extends InstanceBase {
 	constructor(internal) {
 		super(internal)
 
@@ -99,9 +103,13 @@ export default class ShureADPSMInstance extends InstanceBase {
 				label: 'Information',
 				width: 12,
 				value:
-					'ADTQ/ADTD transmitters are controlled through the <b>Shure SystemAPI Server</b> (6.5.0 or later), not directly. ' +
-					'Install it from shure.com, then enter its address and shared secret API key below. ' +
-					'Save, then reopen this page to pick your transmitter by name from the Device list.',
+					'This module talks to the <b>Shure SystemAPI Server</b> (6.5.0 or later), a Windows application ' +
+					'that fronts your Shure devices — install it from shure.com and enter its address and shared ' +
+					'secret API key below. Save, then reopen this page to pick your device by name.<br><br>' +
+					'<b>Axient Digital PSM (ADTQ/ADTD) has no other control protocol</b>, so this is the only way to ' +
+					'control it. For ULX-D, QLX-D, SLX-D and Axient Digital receivers the existing ' +
+					'<i>shure-wireless</i> module talks to them directly over TCP and exposes RF data this API does ' +
+					'not — prefer it unless you are already running SystemAPI.',
 			},
 			{
 				type: 'textinput',
@@ -184,7 +192,7 @@ export default class ShureADPSMInstance extends InstanceBase {
 	 * @returns {Array<Object>} dropdown choices
 	 */
 	deviceChoices() {
-		const choices = [{ id: 'auto', label: 'Auto — first ADTQ/ADTD found' }]
+		const choices = [{ id: 'auto', label: 'Auto — first Axient Digital PSM, else first device' }]
 
 		for (const d of this.discovered ?? []) {
 			const bits = [d.model]
