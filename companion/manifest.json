@@ -7,8 +7,8 @@
 	"description": "Monitor and control Shure devices through the Shure SystemAPI Server \u2014 including Axient Digital PSM (ADTQ/ADTD), which has no other control protocol",
 	"version": "0.0.0",
 	"license": "MIT",
-	"repository": "git+https://github.com/jbeale/companion-module-shure-adpsm.git",
-	"bugs": "https://github.com/jbeale/companion-module-shure-adpsm/issues",
+	"repository": "git+https://github.com/jbeale/companion-module-shure-systemapi.git",
+	"bugs": "https://github.com/jbeale/companion-module-shure-systemapi/issues",
 	"maintainers": [
 		{
 			"name": "Justin Beale",

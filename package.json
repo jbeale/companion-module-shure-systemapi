@@ -11,7 +11,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/jbeale/companion-module-shure-adpsm.git"
+		"url": "git+https://github.com/jbeale/companion-module-shure-systemapi.git"
 	},
 	"engines": {
 		"node": "^22.20",
